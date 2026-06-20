@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CFN | Production Architectures</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;900&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body { font-family: 'Inter', sans-serif; background: #000; color: #fff; overflow-x: hidden; }
+
+        .grain {
+            position: fixed; inset: 0; z-index: 9000; pointer-events: none; opacity: 0.025;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        }
+
+        .reveal-up { opacity: 0; transform: translateY(60px); }
+        .reveal-scale { opacity: 0; transform: scale(0.93); }
+        .hr-anim { transform: scaleX(0); transform-origin: left; }
+
+        .parallax-wrap { position: relative; overflow: hidden; }
+        .parallax-bg {
+            position: absolute; inset: 0; width: 100%; height: 120%; object-fit: cover;
+            will-change: transform;
+        }
+
+        .marquee-track { display: flex; animation: marquee 35s linear infinite; white-space: nowrap; }
+        @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+
+        .mag-btn { transition: transform 0.3s cubic-bezier(0.25,0.46,0.45,0.94), background 0.4s ease; will-change: transform; }
+
+        .spec-card { transition: border-color 0.4s ease; }
+        .spec-card:hover { border-color: #333; }
+
+        /* ── Mobile nav ── */
+        .nav-burger { display: flex; flex-direction: column; gap: 5px; cursor: pointer; padding: 6px; z-index: 60; }
+        .nav-burger span { width: 24px; height: 1.5px; background: #fff; transition: all 0.4s cubic-bezier(0.25,0.46,0.45,0.94); }
+        .nav-burger.open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
+        .nav-burger.open span:nth-child(2) { opacity: 0; }
+        .nav-burger.open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
+        .mobile-menu {
+            position: fixed; inset: 0; z-index: 55;
+            background: rgba(0,0,0,0.97); backdrop-filter: blur(20px);
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+            opacity: 0; pointer-events: none; transition: opacity 0.5s ease;
+        }
+        .mobile-menu.open { opacity: 1; pointer-events: auto; }
+        .mobile-menu a { font-size: 28px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; color: #fff; }
+        .mobile-menu .mm-sub { font-size: 9px; font-family: 'Inter', monospace; letter-spacing: 0.3em; color: #555; text-transform: uppercase; margin-top: 32px; }
+        @media (min-width: 768px) { .nav-burger { display: none; } }
+
+        /* ── Nav logo ── */
+        .nav-logo { height: 38px; width: auto; border-radius: 6px; }
+
+        /* ── Ambient background ── */
+        .ambient-grid {
+            position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0.35;
+            background-image: radial-gradient(circle, rgba(255,255,255,0.12) 1px, transparent 1px);
+            background-size: 48px 48px;
+        }
+
+        /* ── Contact action buttons ── */
+        .contact-btn {
+            display: inline-flex; align-items: center; gap: 10px;
+            padding: 14px 22px; border: 1px solid rgba(255,255,255,0.15);
+            font-size: 11px; font-family: 'Inter', monospace; letter-spacing: 0.15em;
+            text-transform: uppercase; color: #fff;
+            transition: all 0.4s cubic-bezier(0.25,0.46,0.45,0.94);
+        }
+        .contact-btn:hover { border-color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.05); transform: translateY(-3px); }
+        .contact-btn svg { width: 16px; height: 16px; }
+        .contact-btn.wa:hover { border-color: #25D366; color: #25D366; }
+        .contact-btn.call:hover { border-color: #fff; }
+        .contact-btn.email:hover { border-color: #c9ad55; color: #c9ad55; }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: #222; }
+        ::selection { background: rgba(255,255,255,0.12); color: #fff; }
+    </style>
+</head>
+<body class="pt-24">
+
+    <div class="grain"></div>
+
+    <!-- Navigation -->
+    <nav id="nav" class="fixed top-0 w-full z-50 px-6 md:px-8 py-4 transition-all duration-700 bg-black/70 backdrop-blur-md border-b border-neutral-900/50">
+        <div class="max-w-[1400px] mx-auto flex justify-between items-center">
+            <a href="index.html" class="flex items-center gap-3">
+                <img src="assets/logo_cfn.png" alt="CFN" class="nav-logo">
+                <div class="flex flex-col items-start leading-none">
+                    <span class="text-base md:text-lg font-black tracking-[0.2em] text-white">CFN</span>
+                    <span class="text-[7px] md:text-[8px] font-mono tracking-[0.18em] text-neutral-500 uppercase mt-0.5">A subsidiary of CFI</span>
+                </div>
+            </a>
+            <div class="hidden md:flex gap-12 text-[11px] font-mono tracking-widest">
+                <a href="index.html" class="text-neutral-500 hover:text-white transition-colors duration-300">HOME</a>
+                <a href="ecosystems.html" class="text-white border-b border-white/30 pb-1">SYSTEMS</a>
+                <a href="contact.html" class="text-neutral-500 hover:text-white transition-colors duration-300">CONTACT</a>
+            </div>
+            <div class="nav-burger md:hidden" id="navBurger">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Mobile menu -->
+    <div class="mobile-menu" id="mobileMenu">
+        <a href="index.html">Home</a>
+        <a href="ecosystems.html">Systems</a>
+        <a href="contact.html">Contact</a>
+        <div class="mm-sub">A subsidiary of CFI</div>
+    </div>
+
+    <!-- Page Header -->
+    <header class="max-w-[1400px] mx-auto px-8 md:px-16 py-20 md:py-32">
+        <div class="reveal-up mb-6">
+            <span class="text-7xl md:text-9xl font-black text-neutral-900 tracking-tighter leading-none block select-none">SYS</span>
+        </div>
+        <div class="reveal-up">
+            <span class="text-[10px] font-mono tracking-[0.4em] text-neutral-500 uppercase block mb-4">// ENGINE DEPLOYMENTS</span>
+        </div>
+        <div class="reveal-up">
+            <h1 class="text-4xl md:text-6xl lg:text-7xl font-black tracking-tight text-white uppercase leading-[0.95]">PRODUCTION<br>INFRASTRUCTURES</h1>
+        </div>
+        <div class="reveal-up mt-8 max-w-2xl">
+            <p class="text-neutral-500 text-lg font-light leading-relaxed">
+                Active deployment architectures operating across distributed edge networks. Each system is designed for complete autonomy in zero-connectivity environments.
+            </p>
+        </div>
+        <div class="hr-anim h-px bg-neutral-800 w-full mt-16"></div>
+    </header>
+
+    <!-- ===== TAPDINE ===== -->
+    <section class="parallax-wrap min-h-screen relative flex items-center py-32">
+        <img src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1920&q=80" alt="Restaurant" class="parallax-bg" style="object-fit:cover; filter:grayscale(1) contrast(1.1);">
+        <div class="absolute inset-0 bg-gradient-to-r from-black via-black/90 to-black/50 z-[1]"></div>
+        <div class="relative z-[2] max-w-[1400px] mx-auto px-8 md:px-16 w-full">
+            <div class="grid md:grid-cols-12 gap-12 items-start">
+                <div class="md:col-span-7 space-y-6">
+                    <div class="reveal-up">
+                        <div class="text-[10px] font-mono tracking-widest text-neutral-500 uppercase mb-3">DEPLOYMENT REFERENCE // TD-01</div>
+                    </div>
+                    <div class="reveal-up">
+                        <h2 class="text-3xl md:text-5xl lg:text-6xl font-light tracking-tight text-white uppercase mb-6 leading-[1.05]">
+                            TapDine:<br><span class="font-black">Hospitality Kernel</span>
+                        </h2>
+                    </div>
+                    <div class="reveal-up">
+                        <p class="text-neutral-400 text-base md:text-lg font-light leading-relaxed">
+                            A hardened, locally-hosted transaction engine and operations management node designed specifically to decouple restaurant operations from public internet dependency.
+                        </p>
+                    </div>
+                    <div class="reveal-up">
+                        <p class="text-neutral-400 text-base font-light leading-relaxed">
+                            Running over custom localized hardware with isolated local kernels, TapDine interfaces seamlessly with edge NFC technology. All transaction handling, table states, and point-of-sale routing are verified locally and instantly — guaranteeing zero business latency during network or regional connectivity dropouts.
+                        </p>
+                    </div>
+                    <div class="reveal-up flex flex-wrap gap-4 pt-2">
+                        <div class="border border-neutral-800 px-4 py-2 text-[10px] font-mono text-neutral-500 tracking-wider uppercase">Status: Active</div>
+                        <div class="border border-neutral-800 px-4 py-2 text-[10px] font-mono text-neutral-500 tracking-wider uppercase">Latency: 0ms</div>
+                        <div class="border border-neutral-800 px-4 py-2 text-[10px] font-mono text-neutral-500 tracking-wider uppercase">Uptime: 99.97%</div>
+                    </div>
+                </div>
+                <div class="md:col-span-5 md:col-start-8">
+                    <div class="reveal-scale spec-card border border-neutral-800 bg-black/60 backdrop-blur-sm p-8 space-y-5">
+                        <div class="text-[10px] font-mono tracking-widest text-neutral-600 uppercase">SYSTEM SPECIFICATIONS</div>
+                        <div class="space-y-4">
+                            <div class="border-b border-neutral-800 pb-3">
+                                <div class="text-[10px] font-mono text-neutral-600 uppercase">Transaction Engine</div>
+                                <div class="text-sm text-white mt-1">Local-first POS routing</div>
+                            </div>
+                            <div class="border-b border-neutral-800 pb-3">
+                                <div class="text-[10px] font-mono text-neutral-600 uppercase">Interface Protocol</div>
+                                <div class="text-sm text-white mt-1">Edge NFC + PWA</div>
+                            </div>
+                            <div class="border-b border-neutral-800 pb-3">
+                                <div class="text-[10px] font-mono text-neutral-600 uppercase">Network Req.</div>
+                                <div class="text-sm text-white mt-1">None — Fully Offline</div>
+                            </div>
+                            <div class="border-b border-neutral-800 pb-3">
+                                <div class="text-[10px] font-mono text-neutral-600 uppercase">Data Sync</div>
+                                <div class="text-sm text-white mt-1">Backend handshake protocol</div>
+                            </div>
+                            <div>
+                                <div class="text-[10px] font-mono text-neutral-600 uppercase">Hardware</div>
+                                <div class="text-sm text-white mt-1">Custom localized node array</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Marquee -->
+    <section class="py-5 border-y border-neutral-900 bg-black overflow-hidden">
+        <div class="marquee-track">
+            <span class="text-[11px] font-mono tracking-[0.3em] text-neutral-700 uppercase mx-12">DEPLOYMENT TD-01 — ACTIVE</span>
+            <span class="text-neutral-900 mx-3">//</span>
+            <span class="text-[11px] font-mono tracking-[0.3em] text-neutral-700 uppercase mx-12">DEPLOYMENT P-1 — VERIFIED</span>
+            <span class="text-neutral-900 mx-3">//</span>
+            <span class="text-[11px] font-mono tracking-[0.3em] text-neutral-700 uppercase mx-12">DEPLOYMENT NSE-CORE — INTEGRATED</span>
+            <span class="text-neutral-900 mx-3">//</span>
+            <span class="text-[11px] font-mono tracking-[0.3em] text-neutral-700 uppercase mx-12">DEPLOYMENT TD-01 — ACTIVE</span>
+            <span class="text-neutral-900 mx-3">//</span>
+            <span class="text-[11px] font-mono tracking-[0.3em] text-neutral-700 uppercase mx-12">DEPLOYMENT P-1 — VERIFIED</span>
+            <span class="text-neutral-900 mx-3">//</span>
+            <span class="text-[11px] font-mono tracking-[0.3em] text-neutral-700 uppercase mx-12">DEPLOYMENT NSE-CORE — INTEGRATED</span>
+            <span class="text-neutral-900 mx-3">//</span>
+        </div>
+    </section>
+
+    <!-- ===== P-1 ===== -->
+    <section class="parallax-wrap min-h-screen relative flex items-center py-32">
+        <img src="https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=1920&q=80" alt="Security" class="parallax-bg" style="object-fit:cover; filter:grayscale(1) contrast(1.1);">
+        <div class="absolute inset-0 bg-gradient-to-r from-black via-black/90 to-black/50 z-[1]"></div>
+        <div class="relative z-[2] max-w-[1400px] mx-auto px-8 md:px-16 w-full">
+            <div class="grid md:grid-cols-12 gap-12 items-start">
+                <div class="md:col-span-7 space-y-6">
+                    <div class="reveal-up">
+                        <div class="text-[10px] font-mono tracking-widest text-neutral-500 uppercase mb-3">DEPLOYMENT REFERENCE // P-1</div>
+                    </div>
+                    <div class="reveal-up">
+                        <h2 class="text-3xl md:text-5xl lg:text-6xl font-light tracking-tight text-white uppercase mb-6 leading-[1.05]">
+                            P-1:<br><span class="font-black">Perimeter Ledger</span>
+                        </h2>
+                    </div>
+                    <div class="reveal-up">
+                        <p class="text-neutral-400 text-base md:text-lg font-light leading-relaxed">
+                            A decentralized physical asset verification protocol built to secure high-value commercial facilities without relying on centralized, heavy biometric field arrays.
+                        </p>
+                    </div>
+                    <div class="reveal-up">
+                        <p class="text-neutral-400 text-base font-light leading-relaxed">
+                            Utilizing strategically positioned passive NFC tracking checkpoints, field personnel interface using Bring-Your-Own-Device hardware running our offline-first Progressive Web App structure. Every physical interaction is cryptographic, creating local append-only queuing chains that cannot be altered or bypassed.
+                        </p>
+                    </div>
+                    <div class="reveal-up flex flex-wrap gap-4 pt-2">
+                        <div class="border border-neutral-800 px-4 py-2 text-[10px] font-mono text-neutral-500 tracking-wider uppercase">Status: Field Protocol</div>
+                        <div class="border border-neutral-800 px-4 py-2 text-[10px] font-mono text-neutral-500 tracking-wider uppercase">Encryption: 256-bit</div>
+                        <div class="border border-neutral-800 px-4 py-2 text-[10px] font-mono text-neutral-500 tracking-wider uppercase">Tamper-proof: Yes</div>
+                    </div>
+                </div>
+                <div class="md:col-span-5 md:col-start-8">
+                    <div class="reveal-scale spec-card border border-neutral-800 bg-black/60 backdrop-blur-sm p-8 space-y-5">
+                        <div class="text-[10px] font-mono tracking-widest text-neutral-600 uppercase">SYSTEM SPECIFICATIONS</div>
+                        <div class="space-y-4">
+                            <div class="border-b border-neutral-800 pb-3">
+                                <div class="text-[10px] font-mono text-neutral-600 uppercase">Verification</div>
+                                <div class="text-sm text-white mt-1">Cryptographic NFC checkpoints</div>
+                            </div>
+                            <div class="border-b border-neutral-800 pb-3">
+                                <div class="text-[10px] font-mono text-neutral-600 uppercase">Interface</div>
+                                <div class="text-sm text-white mt-1">BYOD + Offline PWA</div>
+                            </div>
+                            <div class="border-b border-neutral-800 pb-3">
+                                <div class="text-[10px] font-mono text-neutral-600 uppercase">Data Integrity</div>
+                                <div class="text-sm text-white mt-1">Append-only local chains</div>
+                            </div>
+                            <div class="border-b border-neutral-800 pb-3">
+                                <div class="text-[10px] font-mono text-neutral-600 uppercase">Patrol Tracking</div>
+                                <div class="text-sm text-white mt-1">Auto-compiled local paths</div>
+                            </div>
+                            <div>
+                                <div class="text-[10px] font-mono text-neutral-600 uppercase">Sync Protocol</div>
+                                <div class="text-sm text-white mt-1">Backend handshake trigger</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== NODE SYNC ENGINE ===== -->
+    <section class="parallax-wrap min-h-screen relative flex items-center py-32">
+        <img src="https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=1920&q=80" alt="Servers" class="parallax-bg" style="object-fit:cover; filter:grayscale(1) contrast(1.1);">
+        <div class="absolute inset-0 bg-gradient-to-r from-black via-black/90 to-black/50 z-[1]"></div>
+        <div class="relative z-[2] max-w-[1400px] mx-auto px-8 md:px-16 w-full">
+            <div class="grid md:grid-cols-12 gap-12 items-start">
+                <div class="md:col-span-7 space-y-6">
+                    <div class="reveal-up">
+                        <div class="text-[10px] font-mono tracking-widest text-neutral-500 uppercase mb-3">DEPLOYMENT REFERENCE // NSE-CORE</div>
+                    </div>
+                    <div class="reveal-up">
+                        <h2 class="text-3xl md:text-5xl lg:text-6xl font-light tracking-tight text-white uppercase mb-6 leading-[1.05]">
+                            Node Sync<br><span class="font-black">Engine</span>
+                        </h2>
+                    </div>
+                    <div class="reveal-up">
+                        <p class="text-neutral-400 text-base md:text-lg font-light leading-relaxed">
+                            The underlying master software framework that bridges abstract software instructions with raw physical hardware components.
+                        </p>
+                    </div>
+                    <div class="reveal-up">
+                        <p class="text-neutral-400 text-base md:text-lg font-light leading-relaxed">
+                            The Node Sync Engine functions as the core brain of all CFN architectures. It aggregates raw signals across isolated system parts — NFC fields, acoustic arrays, physical telemetry sensors — and handles the translation layer, transforming complex hardware feedback sequences into clean, actionable, data-light local databases.
+                        </p>
+                    </div>
+                    <div class="reveal-up flex flex-wrap gap-4 pt-2">
+                        <div class="border border-neutral-800 px-4 py-2 text-[10px] font-mono text-neutral-500 tracking-wider uppercase">Status: Core Integrated</div>
+                        <div class="border border-neutral-800 px-4 py-2 text-[10px] font-mono text-neutral-500 tracking-wider uppercase">Layer: Master Framework</div>
+                        <div class="border border-neutral-800 px-4 py-2 text-[10px] font-mono text-neutral-500 tracking-wider uppercase">Mesh: Full Coverage</div>
+                    </div>
+                </div>
+                <div class="md:col-span-5 md:col-start-8">
+                    <div class="reveal-scale spec-card border border-neutral-800 bg-black/60 backdrop-blur-sm p-8 space-y-5">
+                        <div class="text-[10px] font-mono tracking-widest text-neutral-600 uppercase">SYSTEM SPECIFICATIONS</div>
+                        <div class="space-y-4">
+                            <div class="border-b border-neutral-800 pb-3">
+                                <div class="text-[10px] font-mono text-neutral-600 uppercase">Signal Aggregation</div>
+                                <div class="text-sm text-white mt-1">Multi-modal input fusion</div>
+                            </div>
+                            <div class="border-b border-neutral-800 pb-3">
+                                <div class="text-[10px] font-mono text-neutral-600 uppercase">Translation</div>
+                                <div class="text-sm text-white mt-1">Hardware &rarr; Clean DB layer</div>
+                            </div>
+                            <div class="border-b border-neutral-800 pb-3">
+                                <div class="text-[10px] font-mono text-neutral-600 uppercase">Mesh Protocol</div>
+                                <div class="text-sm text-white mt-1">Local mesh configuration</div>
+                            </div>
+                            <div class="border-b border-neutral-800 pb-3">
+                                <div class="text-[10px] font-mono text-neutral-600 uppercase">Data Density</div>
+                                <div class="text-sm text-white mt-1">Optimized data-light format</div>
+                            </div>
+                            <div>
+                                <div class="text-[10px] font-mono text-neutral-600 uppercase">Consistency</div>
+                                <div class="text-sm text-white mt-1">Absolute state parity</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== ROADMAP CTA ===== -->
+    <section class="relative py-36 md:py-44 px-8 md:px-16 bg-black border-t border-neutral-900">
+        <div class="ambient-grid"></div>
+        <div class="max-w-[1400px] mx-auto text-center relative z-10">
+            <div class="reveal-up mb-5">
+                <span class="text-[10px] font-mono tracking-widest text-neutral-500 uppercase">// EXPANSION PROTOCOL</span>
+            </div>
+            <div class="reveal-up">
+                <h2 class="text-3xl md:text-5xl lg:text-6xl font-black tracking-tight uppercase leading-[1.05] mb-10">
+                    Three systems deployed.<br>Infinite resilience ahead<span class="text-neutral-500">.</span>
+                </h2>
+            </div>
+            <div class="reveal-up">
+                <p class="text-neutral-500 text-lg font-light leading-relaxed max-w-2xl mx-auto mb-12">
+                    Our roadmap includes next-generation acoustic sensing arrays, autonomous drone telemetry protocols, and quantum-resistant cryptographic layers. The infrastructure of tomorrow is being engineered today.
+                </p>
+            </div>
+            <div class="reveal-up">
+                <a href="contact.html" class="mag-btn inline-block bg-white text-black px-12 py-5 text-[11px] font-mono font-bold tracking-widest hover:bg-neutral-200 uppercase">
+                    Request Architecture Brief &rarr;
+                </a>
+            </div>
+            <div class="reveal-up flex flex-wrap items-center justify-center gap-3 mt-8">
+                <a href="https://wa.me/263773791864" target="_blank" rel="noopener" class="contact-btn wa">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 6.32A7.85 7.85 0 0 0 12.05 4a7.94 7.94 0 0 0-6.9 11.9L4 20l4.2-1.1a7.9 7.9 0 0 0 3.84.98h.01a7.94 7.94 0 0 0 5.55-13.56zM12.05 18.5h-.01a6.6 6.6 0 0 1-3.36-.92l-.24-.14-2.49.65.66-2.43-.16-.25a6.6 6.6 0 1 1 12.2-3.5 6.6 6.6 0 0 1-6.6 6.59zm3.62-4.94c-.2-.1-1.18-.58-1.36-.65-.18-.07-.31-.1-.45.1-.13.2-.51.65-.63.78-.12.13-.23.15-.43.05-.2-.1-.84-.31-1.6-.99-.59-.53-.99-1.18-1.11-1.38-.12-.2-.01-.31.09-.41.09-.09.2-.23.3-.35.1-.12.13-.2.2-.33.07-.13.03-.25-.02-.35-.05-.1-.45-1.08-.62-1.48-.16-.39-.33-.34-.45-.34h-.38c-.13 0-.34.05-.52.25s-.68.67-.68 1.63.7 1.89.79 2.02c.1.13 1.37 2.1 3.32 2.94.46.2.83.32 1.11.41.47.15.89.13 1.22.08.37-.06 1.18-.48 1.35-.95.16-.46.16-.86.12-.95-.05-.08-.18-.13-.38-.23z"/></svg>
+                    WhatsApp
+                </a>
+                <a href="tel:+263773791864" class="contact-btn call">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.46.57 3.58a1 1 0 0 1-.25 1.01l-2.2 2.2z"/></svg>
+                    Call
+                </a>
+                <a href="mailto:cfi777@proton.me" class="contact-btn email">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z"/></svg>
+                    Email
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="relative bg-black py-20 px-8 md:px-16 border-t border-neutral-900 overflow-hidden">
+        <div class="ambient-grid"></div>
+        <div class="max-w-[1400px] mx-auto relative z-10">
+            <div class="grid md:grid-cols-12 gap-12 mb-16">
+                <div class="md:col-span-4">
+                    <img src="assets/logo_cfn.png" alt="CFN" class="nav-logo mb-3">
+                    <div class="text-[8px] font-mono tracking-[0.2em] text-neutral-600 uppercase">A subsidiary of CFI</div>
+                    <p class="text-sm text-neutral-600 font-light leading-relaxed mt-6 max-w-xs">
+                        Industrial logic and infrastructure engineered for resilient execution in offline-first operating environments.
+                    </p>
+                </div>
+                <div class="md:col-span-2 md:col-start-6">
+                    <div class="text-[10px] font-mono tracking-widest text-neutral-600 uppercase mb-4">Navigation</div>
+                    <div class="space-y-2">
+                        <a href="index.html" class="block text-sm text-neutral-500 hover:text-white transition-colors">Home</a>
+                        <a href="ecosystems.html" class="block text-sm text-neutral-500 hover:text-white transition-colors">Systems</a>
+                        <a href="contact.html" class="block text-sm text-neutral-500 hover:text-white transition-colors">Contact</a>
+                    </div>
+                </div>
+                <div class="md:col-span-2">
+                    <div class="text-[10px] font-mono tracking-widest text-neutral-600 uppercase mb-4">Deployments</div>
+                    <div class="space-y-2 text-sm text-neutral-500">
+                        <span class="block">TapDine</span><span class="block">P-1 Protocol</span><span class="block">Node Sync Engine</span>
+                    </div>
+                </div>
+                <div class="md:col-span-3">
+                    <div class="text-[10px] font-mono tracking-widest text-neutral-600 uppercase mb-4">Direct Contact</div>
+                    <div class="space-y-3">
+                        <a href="https://wa.me/263773791864" target="_blank" rel="noopener" class="flex items-center gap-3 text-sm text-neutral-500 hover:text-white transition-colors group">
+                            <span class="w-6 h-6 border border-neutral-800 group-hover:border-neutral-500 flex items-center justify-center transition-colors">
+                                <svg viewBox="0 0 24 24" fill="currentColor" class="w-3 h-3"><path d="M17.6 6.32A7.85 7.85 0 0 0 12.05 4a7.94 7.94 0 0 0-6.9 11.9L4 20l4.2-1.1a7.9 7.9 0 0 0 3.84.98h.01a7.94 7.94 0 0 0 5.55-13.56z"/></svg>
+                            </span>
+                            +263 773 791 864
+                        </a>
+                        <a href="tel:+263773791864" class="flex items-center gap-3 text-sm text-neutral-500 hover:text-white transition-colors group">
+                            <span class="w-6 h-6 border border-neutral-800 group-hover:border-neutral-500 flex items-center justify-center transition-colors">
+                                <svg viewBox="0 0 24 24" fill="currentColor" class="w-3 h-3"><path d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.46.57 3.58a1 1 0 0 1-.25 1.01l-2.2 2.2z"/></svg>
+                            </span>
+                            Voice Call
+                        </a>
+                        <a href="mailto:cfi777@proton.me" class="flex items-center gap-3 text-sm text-neutral-500 hover:text-white transition-colors group">
+                            <span class="w-6 h-6 border border-neutral-800 group-hover:border-neutral-500 flex items-center justify-center transition-colors">
+                                <svg viewBox="0 0 24 24" fill="currentColor" class="w-3 h-3"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/></svg>
+                            </span>
+                            cfi777@proton.me
+                        </a>
+                    </div>
+                    <div class="flex items-center gap-2 mt-6">
+                        <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span class="text-sm text-neutral-500">All Systems Operational</span>
+                    </div>
+                </div>
+            </div>
+            <div class="hr-anim h-px bg-neutral-800 w-full mb-8"></div>
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="text-[10px] text-neutral-600 font-mono tracking-[0.3em] uppercase">&copy; 2026 CFN ALL RIGHTS RESERVED.</div>
+                <div class="text-[10px] text-neutral-700 font-mono tracking-widest uppercase">Engineered for resilience</div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        gsap.registerPlugin(ScrollTrigger);
+
+        gsap.utils.toArray('.reveal-up').forEach(el => {
+            gsap.to(el, {
+                scrollTrigger: { trigger: el, start: 'top 88%', toggleActions: 'play none none none' },
+                opacity: 1, y: 0, duration: 1, ease: 'power3.out',
+            });
+        });
+        gsap.utils.toArray('.reveal-scale').forEach(el => {
+            gsap.to(el, {
+                scrollTrigger: { trigger: el, start: 'top 85%', toggleActions: 'play none none none' },
+                opacity: 1, scale: 1, duration: 1.2, ease: 'power3.out',
+            });
+        });
+        gsap.utils.toArray('.hr-anim').forEach(el => {
+            gsap.to(el, {
+                scrollTrigger: { trigger: el, start: 'top 90%', toggleActions: 'play none none none' },
+                scaleX: 1, duration: 1.4, ease: 'power3.inOut',
+            });
+        });
+        gsap.utils.toArray('.parallax-bg').forEach(bg => {
+            gsap.to(bg, {
+                scrollTrigger: { trigger: bg.parentElement, start: 'top bottom', end: 'bottom top', scrub: true },
+                y: '-20%', ease: 'none',
+            });
+        });
+        document.querySelectorAll('.mag-btn').forEach(btn => {
+            btn.addEventListener('mousemove', e => {
+                const r = btn.getBoundingClientRect();
+                gsap.to(btn, {
+                    x: (e.clientX - r.left - r.width / 2) * 0.25,
+                    y: (e.clientY - r.top - r.height / 2) * 0.25,
+                    duration: 0.35, ease: 'power2.out',
+                });
+            });
+            btn.addEventListener('mouseleave', () => {
+                gsap.to(btn, { x: 0, y: 0, duration: 0.6, ease: 'elastic.out(1,0.5)' });
+            });
+        });
+
+        // Mobile nav toggle
+        const burger = document.getElementById('navBurger');
+        const mobileMenu = document.getElementById('mobileMenu');
+        if (burger && mobileMenu) {
+            burger.addEventListener('click', () => {
+                burger.classList.toggle('open');
+                mobileMenu.classList.toggle('open');
+                document.body.style.overflow = mobileMenu.classList.contains('open') ? 'hidden' : '';
+            });
+            mobileMenu.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', () => {
+                    burger.classList.remove('open');
+                    mobileMenu.classList.remove('open');
+                    document.body.style.overflow = '';
+                });
+            });
+        }
+
+        window.addEventListener('load', () => ScrollTrigger.refresh());
+    </script>
+</body>
+</html>
